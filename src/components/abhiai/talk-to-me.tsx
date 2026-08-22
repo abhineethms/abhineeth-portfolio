@@ -108,8 +108,18 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   const scrolled = useScrolledPastThreshold();
   const [viewport, setViewport] = useState<Viewport>(() => readViewport(scrolled));
   const timers = useRef<number[]>([]);
-  const { session, agent, messages, connect, disconnect, idle, micState, retryMicrophone } =
-    useAbhiAISession();
+  const {
+    session,
+    agent,
+    messages,
+    connect,
+    disconnect,
+    idle,
+    hasConnected,
+    error,
+    micState,
+    retryMicrophone,
+  } = useAbhiAISession();
 
   useEffect(() => {
     const measure = () => setViewport(readViewport(scrolled));
@@ -152,10 +162,11 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
     ]);
   }, [disconnect, idle, onOpenChange]);
 
-  // The agent can end the session itself (inactivity goodbye); follow it out.
+  // The agent can end the session itself (inactivity goodbye); follow it out. Only
+  // once we were actually connected: a failed start must stay open and show its error.
   useEffect(() => {
-    if (phase === "live" && idle) close();
-  }, [phase, idle, close]);
+    if (phase === "live" && idle && hasConnected) close();
+  }, [phase, idle, hasConnected, close]);
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
@@ -193,8 +204,8 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
             <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-4 md:px-12 md:pt-10">
               <div>
                 <h2 className="font-serif text-large text-foreground">Talk to me</h2>
-                <p className="mt-1 text-small text-muted-foreground">
-                  Ask me about my work, my projects, or what I'm like.
+                <p className={cn("mt-1 text-small", error ? "text-destructive" : "text-muted-foreground")}>
+                  {error ?? "Ask me about my work, my projects, or what I'm like."}
                 </p>
               </div>
               <button
