@@ -56,8 +56,10 @@ export async function mintToken(env: Record<string, string | undefined>): Promis
 // --- Rate limiting ---------------------------------------------------------------
 // Fixed window per IP, in memory. On serverless this is per warm instance, so it is
 // a soft guard against a single browser hammering the endpoint, not a hard quota.
+// Note the client prefetches one token per page load (LiveKit's prepareConnection)
+// on top of one per tap, and a household or office shares one IP, so keep this loose.
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 6;
+const MAX_PER_WINDOW = 30;
 const windows = new Map<string, { count: number; resetAt: number }>();
 
 export function allow(ip: string, now = Date.now()): boolean {

@@ -62,6 +62,8 @@ export function useAbhiAISession() {
   const startRequested = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [micState, setMicState] = useState<MicState>("unknown");
+  /** True once this session has actually connected; distinguishes "ended" from "never started". */
+  const [hasConnected, setHasConnected] = useState(false);
 
   const session = useSession(tokenSource, {
     agentName: AGENT_NAME,
@@ -72,9 +74,14 @@ export function useAbhiAISession() {
   const agent = useAgent(session);
   const { messages } = useSessionMessages(session);
 
+  useEffect(() => {
+    if (session.isConnected) setHasConnected(true);
+  }, [session.isConnected]);
+
   /** Call from the tap handler. Resolves once the mic decision is made. */
   const connect = useCallback(async (): Promise<MicState> => {
     setError(null);
+    setHasConnected(false);
     const state = await requestMicrophone();
     setMicState(state);
     startWithMic.current = state === "granted";
@@ -88,7 +95,15 @@ export function useAbhiAISession() {
     startRequested.current = false;
     void session
       .start({ tracks: { microphone: { enabled: startWithMic.current } } })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[abhiai] session start failed:", msg);
+        setError(
+          /429/.test(msg)
+            ? "Too many conversations started from your network just now. Please try again in a few minutes."
+            : "I couldn't start the conversation. Please try again in a moment.",
+        );
+      });
     // session changes identity every render; roomName is the real trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomName]);
@@ -109,5 +124,16 @@ export function useAbhiAISession() {
 
   const idle = !session.isConnected && session.connectionState === "disconnected";
 
-  return { session, agent, messages, connect, disconnect, idle, error, micState, retryMicrophone };
+  return {
+    session,
+    agent,
+    messages,
+    connect,
+    disconnect,
+    idle,
+    hasConnected,
+    error,
+    micState,
+    retryMicrophone,
+  };
 }
