@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="portfolio-ui-theme">
+      <ThemeProvider defaultTheme="light" storageKey="portfolio-ui-theme">
         <TooltipProvider>
           <Toaster />
           <Sonner />

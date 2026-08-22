@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Vendored Agents UI components carry dark: variants; bind them to a class the site never sets. */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   /* Minimal Color Palette */
   --color-background: oklch(96% 0.01 85);
