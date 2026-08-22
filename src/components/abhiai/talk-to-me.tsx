@@ -239,26 +239,22 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
             animate={{ opacity: 1, y: 0, transition: { ...fade, delay: 0.3 } }}
             exit={{ opacity: 0, y: 16, transition: { duration: 0.3, ease: EASE } }}
           >
-            <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-4 md:px-12 md:pt-10">
-              <div>
-                <h2 className="font-serif text-large text-foreground">Talk to me</h2>
-                <p className={cn("mt-1 text-small", error ? "text-destructive" : "text-muted-foreground")}>
-                  {error ?? "Ask me about my work, my projects, or what I'm like."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={close}
-                className="group mt-1 flex shrink-0 items-center gap-2 text-tiny uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70"
-              >
-                <span className="hidden sm:inline">End conversation</span>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/30 transition-colors group-hover:border-foreground">
-                  <X className="h-4 w-4" />
-                </span>
-              </button>
-            </header>
+            {error && (
+              <p className="shrink-0 px-6 pt-16 text-small text-destructive md:px-12 md:pt-20">
+                {error}
+              </p>
+            )}
 
-            <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 md:px-10 md:py-4">
+            {/* relative: the transcript's scroll-to-end button is absolutely positioned
+                and must anchor here, not to the panel (where the composer would hide it). */}
+            <div
+              className={cn(
+                // Grey for both sides of the transcript; the wave owns the terracotta.
+                "relative min-h-0 flex-1 overflow-hidden px-4 pb-3 font-serif text-muted-foreground md:px-10 md:pb-4",
+                "[&_[data-slot=bubble-content]]:text-body [&_[data-slot=bubble-content]]:text-muted-foreground [&_[data-slot=bubble-content]_*]:text-body",
+                error ? "pt-3" : "pt-12 md:pt-20",
+              )}
+            >
               <AgentChatTranscript messages={messages} agentState={agent.state} className="h-full" />
             </div>
 
@@ -300,6 +296,27 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
           </span>
         )}
       </motion.button>
+
+      {/* End: top-right of the screen, above everything in the overlay. */}
+      <AnimatePresence>
+        {isLive && (
+          <motion.button
+            key="end"
+            type="button"
+            onClick={close}
+            className="group fixed right-4 top-4 z-[63] flex items-center gap-2 text-tiny uppercase tracking-[0.18em] text-foreground transition-opacity hover:opacity-70 md:right-8 md:top-8"
+            style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { ...fade, delay: 0.3 } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+          >
+            <span className="hidden sm:inline">End conversation</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-foreground/30 transition-colors group-hover:border-foreground">
+              <X className="h-4 w-4" />
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Status under the wave, tracking its position. */}
       <motion.div
