@@ -8,6 +8,7 @@ import { useScrolledPastThreshold } from "@/components/BackToTop";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Composer } from "./controls";
+import { ConnectingRing, StatusLine, deriveStatus } from "./status-line";
 import { useAbhiAISession } from "./use-abhiai-session";
 
 /** The site's foreground, oklch(65% 0.24 30) from src/index.css, as sRGB hex for the shader. */
@@ -26,6 +27,8 @@ const AURA_COLOR = "#ff3321";
 type Phase = "closed" | "center" | "grown" | "live";
 
 const STEP_MS = 650;
+/** How long the "couldn't reach" message stays before the overlay closes itself. */
+const UNAVAILABLE_LINGER_MS = 2500;
 const BUTTON_PX = 48;
 /** Phone: the wave rests in the nav bar, in a slot Navigation.tsx renders. */
 const NAV_SLOT_ID = "abhiai-nav-slot";
@@ -168,6 +171,35 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
     if (phase === "live" && idle && hasConnected) close();
   }, [phase, idle, hasConnected, close]);
 
+  // The agent never arrived (dispatch timeout) or left mid-conversation while we are
+  // still in the room. Say so, then close, rather than leaving a wave that hears nobody.
+  const agentFailed = agent.state === "failed";
+  const agentWasPresent = useRef(false);
+  useEffect(() => {
+    if (agent.state === "listening" || agent.state === "thinking" || agent.state === "speaking") {
+      agentWasPresent.current = true;
+    }
+    if (phase === "closed") agentWasPresent.current = false;
+  }, [agent.state, phase]);
+  const agentGone = agentWasPresent.current && agent.state === "disconnected" && session.isConnected;
+
+  useEffect(() => {
+    if (phase !== "live" || !(agentFailed || agentGone)) return;
+    if (agentFailed && agent.failureReasons) {
+      console.warn("[abhiai] agent failed:", agent.failureReasons);
+    }
+    const t = window.setTimeout(close, UNAVAILABLE_LINGER_MS);
+    return () => window.clearTimeout(t);
+  }, [phase, agentFailed, agentGone, agent.failureReasons, close]);
+
+  const status = deriveStatus({
+    open: phase === "grown" || phase === "live",
+    connectionState: session.connectionState,
+    agentState: agent.state,
+    agentGone,
+    failed: agentFailed,
+  });
+
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
   const isOpen = phase !== "closed";
@@ -263,6 +295,16 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         )}
       </motion.button>
 
+      {/* Status under the wave, tracking its position. */}
+      <motion.div
+        className="pointer-events-none fixed left-0 top-0 z-[62]"
+        style={{ width: size }}
+        animate={{ x: t.cx - size / 2, y: t.cy + (size * t.scale) / 2 + 8, opacity: status ? 1 : 0 }}
+        transition={{ x: travel, y: travel, opacity: fade }}
+      >
+        <StatusLine status={status} />
+      </motion.div>
+
       {/* The aura itself: full-size canvas, positioned by transform only. */}
       <motion.div
         className="pointer-events-none fixed left-0 top-0 z-[62]"
@@ -279,6 +321,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
           colorShift={0.05}
           className="!h-full !w-full mix-blend-multiply"
         />
+        <ConnectingRing active={status === "connecting" && isLive} size={size} />
       </motion.div>
     </AgentSessionProvider>
   );
