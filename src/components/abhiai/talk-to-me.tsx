@@ -8,7 +8,7 @@ import { useScrolledPastThreshold } from "@/components/BackToTop";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Composer } from "./controls";
-import { ConnectingRing, StatusLine, deriveStatus } from "./status-line";
+import { ConnectionBar, StatusLine, deriveProgress, deriveStatus } from "./status-line";
 import { useAbhiAISession } from "./use-abhiai-session";
 
 /** The site's foreground, oklch(65% 0.24 30) from src/index.css, as sRGB hex for the shader. */
@@ -193,11 +193,17 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   }, [phase, agentFailed, agentGone, agent.failureReasons, close]);
 
   const status = deriveStatus({
-    open: phase === "grown" || phase === "live",
+    open: phase === "live",
     connectionState: session.connectionState,
     agentState: agent.state,
     agentGone,
     failed: agentFailed,
+  });
+  const progress = deriveProgress({
+    started: phase !== "closed",
+    connectionState: session.connectionState,
+    isConnected: session.isConnected,
+    agentState: agent.state,
   });
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
@@ -302,6 +308,12 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         animate={{ x: t.cx - size / 2, y: t.cy + (size * t.scale) / 2 + 8, opacity: status ? 1 : 0 }}
         transition={{ x: travel, y: travel, opacity: fade }}
       >
+        {/* Only once the wave has settled on the left, and only while the AI is not on yet. */}
+        <ConnectionBar
+          progress={progress}
+          visible={isLive && status === "connecting"}
+          className="mx-auto w-3/4"
+        />
         <StatusLine status={status} />
       </motion.div>
 
@@ -321,7 +333,6 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
           colorShift={0.05}
           className="!h-full !w-full mix-blend-multiply"
         />
-        <ConnectingRing active={status === "connecting" && isLive} size={size} />
       </motion.div>
     </AgentSessionProvider>
   );

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { AgentState } from "@livekit/components-react";
 import type { ConnectionState } from "livekit-client";
@@ -29,27 +30,90 @@ export function deriveStatus(opts: {
 }
 
 /**
- * Under the wave: a heartbeat while the line is live, words only when something is
- * wrong. Listening / thinking / speaking are left to the wave itself.
+ * How far along the connection is, from the milestones the client can observe:
+ * tap -> token + room connecting -> room connected -> agent joined -> agent listening.
  */
+export function deriveProgress(opts: {
+  started: boolean;
+  connectionState: ConnectionState | string;
+  isConnected: boolean;
+  agentState: AgentState;
+}): number {
+  if (!opts.started) return 0;
+  switch (opts.agentState) {
+    case "listening":
+    case "thinking":
+    case "speaking":
+      return 1;
+    case "initializing":
+    case "idle":
+    case "pre-connect-buffering":
+      return 0.8;
+    default:
+      break;
+  }
+  if (opts.isConnected) return 0.55;
+  if (opts.connectionState === "connecting") return 0.3;
+  return 0.1;
+}
+
+interface ConnectionBarProps {
+  /** 0..1 from deriveProgress; the bar never moves backwards. */
+  progress: number;
+  /** Hidden once this is false (the AI is on, or the overlay is closed). */
+  visible: boolean;
+  className?: string;
+}
+
+/** A hairline track with a terracotta fill, under the wave while connecting. */
+export function ConnectionBar({ progress, visible, className }: ConnectionBarProps) {
+  const peak = useRef(0);
+  if (!visible) peak.current = 0;
+  else peak.current = Math.max(peak.current, progress);
+
+  useEffect(() => {
+    if (!visible) peak.current = 0;
+  }, [visible]);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="bar"
+          className={cn("h-px w-full overflow-hidden bg-foreground/15", className)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.4, delay: 0.3 } }}
+          role="progressbar"
+          aria-label="Connecting"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(peak.current * 100)}
+        >
+          <motion.div
+            className="h-full bg-foreground"
+            initial={{ width: "0%" }}
+            animate={{ width: `${peak.current * 100}%` }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Words only when something is wrong; normal states are left to the wave. */
 export function StatusLine({ status, className }: { status: SessionStatus; className?: string }) {
+  const text =
+    status === "reconnecting"
+      ? "Reconnecting"
+      : status === "unavailable"
+        ? "Couldn't reach the AI right now"
+        : null;
   return (
     <div className={cn("flex h-5 items-center justify-center", className)} aria-live="polite">
       <AnimatePresence mode="wait">
-        {status === "live" && (
-          <motion.span
-            key="heartbeat"
-            aria-label="Connected"
-            className="relative flex h-2.5 w-2.5"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <span className="absolute inset-0 animate-ping rounded-full bg-foreground/40 [animation-duration:2.2s]" />
-            <span className="relative h-2.5 w-2.5 rounded-full bg-foreground" />
-          </motion.span>
-        )}
-        {(status === "reconnecting" || status === "unavailable") && (
+        {text && (
           <motion.span
             key={status}
             className={cn(
@@ -61,30 +125,10 @@ export function StatusLine({ status, className }: { status: SessionStatus; class
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.25 }}
           >
-            {status === "reconnecting" ? "Reconnecting" : "Couldn't reach the AI right now"}
+            {text}
           </motion.span>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-/** A hairline ring that breathes around the wave while connecting. */
-export function ConnectingRing({ active, size }: { active: boolean; size: number }) {
-  return (
-    <AnimatePresence>
-      {active && (
-        <motion.span
-          key="ring"
-          aria-hidden
-          className="pointer-events-none absolute rounded-full border border-foreground/30"
-          style={{ width: size, height: size, left: 0, top: 0 }}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: [0.25, 0.7, 0.25], scale: [0.96, 1.02, 0.96] }}
-          exit={{ opacity: 0, scale: 1.08, transition: { duration: 0.5 } }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-        />
-      )}
-    </AnimatePresence>
   );
 }
