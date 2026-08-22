@@ -50,15 +50,20 @@ export default function Navigation(_props: NavigationProps) {
             </a>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            className="md:hidden text-tiny tracking-widest uppercase hover:text-muted-foreground transition-colors"
-          >
-            {open ? "Close" : "Menu"}
-          </button>
+          <div className="md:hidden flex items-center gap-5">
+            {/* Resting spot for the voice-agent wave on phones; TalkToMe measures and
+                overlays it. Keeps layout honest without coupling the two components. */}
+            <span id="abhiai-nav-slot" aria-hidden className="block h-9 w-9" />
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              className="text-tiny tracking-widest uppercase hover:text-muted-foreground transition-colors"
+            >
+              {open ? "Close" : "Menu"}
+            </button>
+          </div>
         </div>
 
         {open && (

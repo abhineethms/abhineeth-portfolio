@@ -3,27 +3,29 @@ import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/** Scroll depth at which the button appears. Shared with the voice button, which makes room for it. */
+export const BACK_TO_TOP_THRESHOLD = 400;
+
+export function useScrolledPastThreshold(): boolean {
+  const [past, setPast] = useState(false);
+  useEffect(() => {
+    const update = () => setPast(window.scrollY > BACK_TO_TOP_THRESHOLD);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  return past;
+}
+
 /**
  * BackToTop Button Component
- * Shows a floating button when user scrolls down, scrolls to top on click
+ * Slides in from the right edge once the user has scrolled, pushing the voice button aside.
  */
 export default function BackToTop() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const toggleVisibility = () => {
-      setIsVisible(window.pageYOffset > 400);
-    };
-
-    window.addEventListener("scroll", toggleVisibility, { passive: true });
-    return () => window.removeEventListener("scroll", toggleVisibility);
-  }, []);
+  const isVisible = useScrolledPastThreshold();
 
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -31,10 +33,8 @@ export default function BackToTop() {
       onClick={scrollToTop}
       size="lg"
       className={cn(
-        "fixed bottom-8 right-8 rounded-full w-12 h-12 p-0 shadow-lg transition-all duration-300 z-40",
-        isVisible
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 translate-y-10 pointer-events-none"
+        "fixed bottom-8 right-8 z-40 h-12 w-12 rounded-full p-0 shadow-lg transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        isVisible ? "translate-x-0 opacity-100" : "translate-x-24 opacity-0 pointer-events-none"
       )}
       aria-label="Back to top"
     >
