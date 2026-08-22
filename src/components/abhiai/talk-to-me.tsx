@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AgentSessionProvider } from "@/components/agents-ui/agent-session-provider";
 import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
@@ -110,6 +110,10 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   const [phase, setPhase] = useState<Phase>("closed");
   const scrolled = useScrolledPastThreshold();
   const [viewport, setViewport] = useState<Viewport>(() => readViewport(scrolled));
+  // The nav slot is not in the DOM during the first render, so the resting position is
+  // not known yet. Hold the wave back for that one frame rather than parking it in the
+  // fallback corner and animating across the screen once the real slot is measured.
+  const [measured, setMeasured] = useState(false);
   const timers = useRef<number[]>([]);
   const {
     session,
@@ -124,10 +128,15 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
     retryMicrophone,
   } = useAbhiAISession();
 
-  useEffect(() => {
-    const measure = () => setViewport(readViewport(scrolled));
+  // Layout effect: the nav slot exists in the DOM by now but nothing has painted yet,
+  // so the wave's resting position is correct on the very first frame instead of
+  // being measured a frame late and then travelling there.
+  useLayoutEffect(() => {
+    const measure = () => {
+      setViewport(readViewport(scrolled));
+      setMeasured(true);
+    };
     measure();
-    // The nav slot mounts with the page, possibly after this effect; measure again next frame.
     const raf = requestAnimationFrame(measure);
     window.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
@@ -268,7 +277,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         )}
       </AnimatePresence>
 
-      {/* The CTA: a ring on md+, a labelled pill on phones. The aura rests on top of it. */}
+      {/* The CTA: a ring on md+, the nav-bar slot on phones. The aura rests on top of it. */}
       <motion.button
         type="button"
         onClick={open}
@@ -278,12 +287,14 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
           viewport.md ? "bg-background/85 shadow-lg backdrop-blur-sm" : "bg-transparent",
         )}
         style={{ pointerEvents: isOpen ? "none" : "auto" }}
+        // Mount at the resting position instead of animating in from x:0,y:0 on page load.
+        initial={false}
         animate={{
           x: ctaRect(viewport).left,
           y: ctaRect(viewport).top,
           width: ctaRect(viewport).size,
           height: ctaRect(viewport).size,
-          opacity: isOpen ? 0 : 1,
+          opacity: !measured || isOpen ? 0 : 1,
           scale: isOpen ? 0.9 : 1,
         }}
         whileHover={viewport.md ? { scale: 1.06 } : undefined}
@@ -322,6 +333,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
       <motion.div
         className="pointer-events-none fixed left-0 top-0 z-[62]"
         style={{ width: size }}
+        initial={false}
         animate={{ x: t.cx - size / 2, y: t.cy + (size * t.scale) / 2 + 8, opacity: status ? 1 : 0 }}
         transition={{ x: travel, y: travel, opacity: fade }}
       >
@@ -338,7 +350,8 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
       <motion.div
         className="pointer-events-none fixed left-0 top-0 z-[62]"
         style={{ width: size, height: size }}
-        animate={{ x: t.cx - size / 2, y: t.cy - size / 2, scale: t.scale }}
+        initial={false}
+        animate={{ x: t.cx - size / 2, y: t.cy - size / 2, scale: t.scale, opacity: measured ? 1 : 0 }}
         transition={travel}
       >
         <AgentAudioVisualizerAura
