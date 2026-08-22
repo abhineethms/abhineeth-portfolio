@@ -114,6 +114,10 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   // not known yet. Hold the wave back for that one frame rather than parking it in the
   // fallback corner and animating across the screen once the real slot is measured.
   const [measured, setMeasured] = useState(false);
+  // The wave only ever travels during the open/close choreography. Position changes
+  // while it is parked - a web font landing and reflowing the nav, a resize, the
+  // back-to-top button sliding in - must snap, or the wave drifts across the screen.
+  const [choreographing, setChoreographing] = useState(false);
   const timers = useRef<number[]>([]);
   const {
     session,
@@ -138,6 +142,8 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
     };
     measure();
     const raf = requestAnimationFrame(measure);
+    // Cormorant Garamond arrives after first paint and reflows the nav, moving the slot.
+    void document.fonts?.ready.then(measure);
     window.addEventListener("resize", measure);
     window.addEventListener("orientationchange", measure);
     return () => {
@@ -157,6 +163,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
     // permission dialog should never land on top of the animation.
     void connect().then(() => {
       onOpenChange(true);
+      setChoreographing(true);
       setPhase("center");
       schedule([() => setPhase("grown"), () => setPhase("live")]);
     });
@@ -171,6 +178,8 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         setPhase("closed");
         onOpenChange(false);
       },
+      // One step later: the wave has arrived, so stop animating position again.
+      () => setChoreographing(false),
     ]);
   }, [disconnect, idle, onOpenChange]);
 
@@ -218,6 +227,8 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
   const isOpen = phase !== "closed";
+  /** Spring while travelling between phases; instant for idle re-measures. */
+  const place = choreographing ? travel : { duration: 0 };
   const isLive = phase === "live";
   const size = auraSize(viewport);
   const t = target(phase, viewport);
@@ -299,7 +310,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         }}
         whileHover={viewport.md ? { scale: 1.06 } : undefined}
         whileTap={{ scale: 0.96 }}
-        transition={{ x: travel, y: travel, width: travel, height: travel, opacity: fade, scale: fade }}
+        transition={{ x: place, y: place, width: place, height: place, opacity: fade, scale: fade }}
       >
         {viewport.md && (
           <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap font-serif text-small text-foreground opacity-0 transition-opacity group-hover:opacity-100">
@@ -335,7 +346,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         style={{ width: size }}
         initial={false}
         animate={{ x: t.cx - size / 2, y: t.cy + (size * t.scale) / 2 + 8, opacity: status ? 1 : 0 }}
-        transition={{ x: travel, y: travel, opacity: fade }}
+        transition={{ x: place, y: place, opacity: fade }}
       >
         {/* Only once the wave has settled on the left, and only while the AI is not on yet. */}
         <ConnectionBar
@@ -352,7 +363,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         style={{ width: size, height: size }}
         initial={false}
         animate={{ x: t.cx - size / 2, y: t.cy - size / 2, scale: t.scale, opacity: measured ? 1 : 0 }}
-        transition={travel}
+        transition={{ x: place, y: place, scale: place, opacity: fade }}
       >
         <AgentAudioVisualizerAura
           size="xl"
