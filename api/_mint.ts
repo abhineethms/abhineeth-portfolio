@@ -16,8 +16,15 @@ export interface MintResult {
   room_name: string;
 }
 
+/** Tolerate values pasted with surrounding quotes (as they appear in a .env file). */
+function clean(v: string | undefined): string | undefined {
+  return v?.trim().replace(/^["']|["']$/g, "") || undefined;
+}
+
 export async function mintToken(env: Record<string, string | undefined>): Promise<MintResult> {
-  const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = env;
+  const LIVEKIT_URL = clean(env.LIVEKIT_URL);
+  const LIVEKIT_API_KEY = clean(env.LIVEKIT_API_KEY);
+  const LIVEKIT_API_SECRET = clean(env.LIVEKIT_API_SECRET);
   if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
     throw new Error("LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET are not configured");
   }
