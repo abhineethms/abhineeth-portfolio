@@ -7,12 +7,16 @@ import { StartAudioButton } from "@/components/agents-ui/start-audio-button";
 import { useScrolledPastThreshold } from "@/components/BackToTop";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoachMark, markCoachSeen, useCoachMark } from "./coach-mark";
 import { Composer } from "./controls";
 import { ConnectionBar, StatusLine, deriveProgress, deriveStatus } from "./status-line";
 import { useAbhiAISession } from "./use-abhiai-session";
 
 /** The site's foreground, oklch(65% 0.24 30) from src/index.css, as sRGB hex for the shader. */
 const AURA_COLOR = "#ff3321";
+
+/** Anything on the page can start a conversation by dispatching this on window. */
+export const OPEN_EVENT = "abhiai:open";
 
 /**
  * One persistent aura, moved and scaled with transforms only. Its canvas always renders
@@ -159,6 +163,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   };
 
   const open = useCallback(() => {
+    markCoachSeen();
     // Ask for the mic first, inside the tap, and only then start moving: the browser's
     // permission dialog should never land on top of the animation.
     void connect().then(() => {
@@ -182,6 +187,16 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
       () => setChoreographing(false),
     ]);
   }, [disconnect, idle, onOpenChange]);
+
+  // Any part of the page can ask for the agent (the hero link, the coach mark)
+  // without this component's open() being threaded down through props.
+  useEffect(() => {
+    const handler = () => {
+      if (phase === "closed") open();
+    };
+    window.addEventListener(OPEN_EVENT, handler);
+    return () => window.removeEventListener(OPEN_EVENT, handler);
+  }, [phase, open]);
 
   // The agent can end the session itself (inactivity goodbye); follow it out. Only
   // once we were actually connected: a failed start must stay open and show its error.
@@ -227,6 +242,7 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
   const isOpen = phase !== "closed";
+  const coach = useCoachMark(isOpen);
   /** Spring while travelling between phases; instant for idle re-measures. */
   const place = choreographing ? travel : { duration: 0 };
   const isLive = phase === "live";
@@ -356,6 +372,21 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
         />
         <StatusLine status={status} />
       </motion.div>
+
+      {/* One-time tip pointing at the wave: below it in the nav on phones, above the
+          corner ring on desktop. */}
+      {measured && (
+        <CoachMark
+          show={coach.show && !isOpen}
+          anchor={ctaRect(viewport)}
+          below={!viewport.md && viewport.navSlot !== null}
+          onOpen={() => {
+            coach.dismiss();
+            open();
+          }}
+          onDismiss={coach.dismiss}
+        />
+      )}
 
       {/* The aura itself: full-size canvas, positioned by transform only. */}
       <motion.div
