@@ -125,14 +125,16 @@ export function CoachMark({ show, anchor, below, onOpen, onDismiss }: CoachMarkP
           exit={{ opacity: 0, y: reduce ? 0 : below ? -6 : 6 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="relative flex items-start gap-2 rounded-lg border border-foreground/20 bg-card px-4 py-3 shadow-lg">
-            {/* The pointer: a rotated square tucked under the card's edge. */}
+          <div className="relative flex items-center gap-3 rounded-lg border border-foreground/20 bg-card py-2.5 pl-4 pr-2 shadow-lg">
+            {/* The pointer, aimed at the centre of the wave: the card's right edge sits
+                4px past the wave's, so the centre is (4 + size/2) in from that edge. */}
             <span
               aria-hidden
               className={cn(
-                "absolute right-5 h-2.5 w-2.5 rotate-45 border-foreground/20 bg-card",
+                "absolute h-2.5 w-2.5 rotate-45 border-foreground/20 bg-card",
                 below ? "-top-[6px] border-l border-t" : "-bottom-[6px] border-b border-r",
               )}
+              style={{ right: 4 + anchor.size / 2 - 5 }}
             />
             <button
               type="button"
@@ -145,7 +147,7 @@ export function CoachMark({ show, anchor, below, onOpen, onDismiss }: CoachMarkP
               type="button"
               onClick={onDismiss}
               aria-label="Dismiss"
-              className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
             </button>
