@@ -1,4 +1,5 @@
 import { personalInfo } from "@/data/portfolio-data";
+import { OPEN_EVENT } from "@/components/abhiai/talk-to-me";
 
 /**
  * HeaderSection Component
@@ -33,7 +34,17 @@ export default function HeaderSection() {
           </h1>
         </div>
 
-        <p className="text-small text-center">{currentYear}</p>
+        <div className="flex flex-col items-center gap-4">
+          {/* Catches visitors who never scroll far enough to meet the wave. */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent(OPEN_EVENT))}
+            className="border-b border-foreground/40 pb-0.5 text-small transition-colors hover:border-foreground"
+          >
+            Ask me anything, out loud
+          </button>
+          <p className="text-small text-center">{currentYear}</p>
+        </div>
       </div>
     </section>
   );
