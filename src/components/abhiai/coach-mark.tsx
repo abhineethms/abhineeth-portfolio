@@ -137,7 +137,7 @@ export function CoachMark({ show, anchor, below, onOpen, onDismiss }: CoachMarkP
             <button
               type="button"
               onClick={onOpen}
-              className="whitespace-nowrap text-left font-serif text-small leading-snug text-card-foreground"
+              className="text-left font-serif text-small leading-snug text-card-foreground"
             >
               Talk to my AI version
             </button>
