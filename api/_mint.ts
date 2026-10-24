@@ -46,6 +46,9 @@ export async function mintToken(env: Record<string, string | undefined>): Promis
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
+    // Lets the client tag itself with its PostHog ids, which the agent reads to tie
+    // the conversation to the visitor's web session.
+    canUpdateOwnMetadata: true,
   });
   at.roomConfig = new RoomConfiguration({
     emptyTimeout: EMPTY_TIMEOUT_S,

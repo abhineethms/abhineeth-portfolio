@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TokenSource } from "livekit-client";
 import { useAgent, useSession, useSessionMessages } from "@livekit/components-react";
+import { analyticsEnabled, posthog, track } from "@/lib/analytics";
 
 /** Must match agent_name in AbhiAI/src/agent.py and AGENT_NAME in api/_mint.ts. */
 export const AGENT_NAME = "AbhiAI";
@@ -74,8 +75,34 @@ export function useAbhiAISession() {
   const agent = useAgent(session);
   const { messages } = useSessionMessages(session);
 
+  // Analytics: session start/end, and tagging the participant with the visitor's
+  // PostHog ids so AbhiAI's conversation events join their web session.
+  const connectedAt = useRef<number | null>(null);
+  const messageCount = useRef(0);
+  messageCount.current = messages.length;
+
   useEffect(() => {
-    if (session.isConnected) setHasConnected(true);
+    if (session.isConnected) {
+      setHasConnected(true);
+      connectedAt.current = Date.now();
+      track("voice_connected");
+      if (analyticsEnabled) {
+        void session.room.localParticipant
+          .setAttributes({
+            posthog_distinct_id: posthog.get_distinct_id(),
+            posthog_session_id: posthog.get_session_id(),
+          })
+          .catch((err: unknown) => console.warn("[abhiai] could not tag participant:", err));
+      }
+    } else if (connectedAt.current !== null) {
+      track("voice_ended", {
+        duration_s: Math.round((Date.now() - connectedAt.current) / 1000),
+        transcript_lines: messageCount.current,
+      });
+      connectedAt.current = null;
+    }
+    // session changes identity every render; isConnected is the real trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isConnected]);
 
   /** Call from the tap handler. Resolves once the mic decision is made. */
@@ -84,6 +111,7 @@ export function useAbhiAISession() {
     setHasConnected(false);
     const state = await requestMicrophone();
     setMicState(state);
+    track("voice_opened", { mic: state });
     startWithMic.current = state === "granted";
     startRequested.current = true;
     setRoomName(newRoomName());
@@ -98,6 +126,7 @@ export function useAbhiAISession() {
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[abhiai] session start failed:", msg);
+        track("voice_start_failed", { reason: /429/.test(msg) ? "rate_limited" : "error" });
         setError(
           /429/.test(msg)
             ? "Too many conversations started from your network just now. Please try again in a few minutes."

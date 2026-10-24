@@ -6,6 +6,7 @@ import { AgentChatTranscript } from "@/components/agents-ui/agent-chat-transcrip
 import { StartAudioButton } from "@/components/agents-ui/start-audio-button";
 import { useScrolledPastThreshold } from "@/components/BackToTop";
 import { X } from "lucide-react";
+import { analyticsEnabled } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { CoachMark, markCoachSeen, useCoachMark } from "./coach-mark";
 import { Composer } from "./controls";
@@ -299,6 +300,11 @@ export default function TalkToMe({ onOpenChange }: TalkToMeProps) {
                 <StartAudioButton label="Enable audio" size="sm" variant="secondary" />
               </div>
               <Composer micState={micState} onRetryMicrophone={retryMicrophone} />
+              {analyticsEnabled && (
+                <p className="text-center text-tiny text-muted-foreground">
+                  Conversations are saved to help improve AbhiAI.
+                </p>
+              )}
             </footer>
           </motion.section>
         )}
