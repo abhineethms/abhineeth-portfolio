@@ -85,7 +85,7 @@ export const experience: Experience[] = [
     companyUrl: "https://recruit41.com/",
     role: "Solutions Engineer",
     location: "Bangalore, India",
-    startDate: "2025-10",
+    startDate: "2025-06",
     endDate: null,
     current: true,
     tracks: [
@@ -118,7 +118,7 @@ export const experience: Experience[] = [
     role: "SDE-I",
     location: "Bangalore, India",
     startDate: "2025-02",
-    endDate: "2025-10",
+    endDate: "2025-06",
     current: false,
     description: [
       "Built CuraBot, a healthcare management platform with role-based dashboards for patients, doctors, and admins using React.js and Node.js.",
