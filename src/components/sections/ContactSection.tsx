@@ -1,4 +1,5 @@
 import { personalInfo, socialLinks } from "@/data/portfolio-data";
+import { track } from "@/lib/analytics";
 
 /**
  * ContactSection Component
@@ -44,7 +45,12 @@ export default function ContactSection() {
               </a>
             ))}
 
-            <a href={personalInfo.resumeUrl} download className="text-body underline block">
+            <a
+              href={personalInfo.resumeUrl}
+              download
+              onClick={() => track("resume_downloaded", { location: "contact" })}
+              className="text-body underline block"
+            >
               Download Résumé
             </a>
 

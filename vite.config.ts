@@ -9,6 +9,19 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Mirrors the /ingest rewrites in vercel.json so PostHog works in dev too.
+    proxy: {
+      "/ingest/static": {
+        target: "https://us-assets.i.posthog.com",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ingest/, ""),
+      },
+      "/ingest": {
+        target: "https://us.i.posthog.com",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/ingest/, ""),
+      },
+    },
   },
   // loadEnv with an empty prefix reads LIVEKIT_* from .env.local for the dev-only token
   // endpoint without exposing them to the client bundle (only VITE_* is ever inlined).
