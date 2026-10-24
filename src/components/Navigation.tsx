@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { personalInfo } from "@/data/portfolio-data";
+import { track } from "@/lib/analytics";
 
 interface NavigationProps {
   scrolled?: boolean;
@@ -42,6 +43,7 @@ export default function Navigation(_props: NavigationProps) {
             ))}
             <a
               href={personalInfo.resumeUrl}
+              onClick={() => track("resume_opened", { location: "nav" })}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm underline hover:text-muted-foreground transition-colors"
@@ -80,6 +82,7 @@ export default function Navigation(_props: NavigationProps) {
             ))}
             <a
               href={personalInfo.resumeUrl}
+              onClick={() => track("resume_opened", { location: "nav" })}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm underline hover:text-muted-foreground transition-colors"

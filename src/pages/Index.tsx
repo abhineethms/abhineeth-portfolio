@@ -8,10 +8,21 @@ import ProjectsSection from "@/components/sections/ProjectsSection";
 import SkillsSection from "@/components/sections/SkillsSection";
 import EducationSection from "@/components/sections/EducationSection";
 import ContactSection from "@/components/sections/ContactSection";
+import { useEffect, useRef } from "react";
 import { useActiveSection } from "@/hooks/useActiveSection";
+import { track } from "@/lib/analytics";
 
 export default function Index() {
-  useActiveSection(100);
+  const activeSection = useActiveSection(100);
+
+  // One event per section per visit, so scrolling back and forth doesn't inflate counts.
+  const seenSections = useRef(new Set<string>());
+  useEffect(() => {
+    if (seenSections.current.has(activeSection)) return;
+    seenSections.current.add(activeSection);
+    track("section_viewed", { section: activeSection });
+  }, [activeSection]);
+
   return (
     <Layout>
       <Navigation />
